@@ -36,7 +36,7 @@ jobs:
           echo "# This file marks the tests directory as a Python package" > backend/tests/__init__.py
           
           # Create minimal models.py for testing
-          cat > backend/models.py << 'EOF'
+          cat > backend/models.py << EOF
           from sqlalchemy import Column, String, DateTime, Text, ForeignKey, create_engine
           from sqlalchemy.ext.declarative import declarative_base
           from sqlalchemy.orm import relationship, sessionmaker
@@ -76,7 +76,7 @@ jobs:
           EOF
           
           # Create minimal jenkins_service.py for testing
-          cat > backend/services/jenkins_service.py << 'EOF'
+          cat > backend/services/jenkins_service.py << EOF
           import os
           from datetime import datetime
           from typing import Optional, Dict, Any
@@ -104,7 +104,7 @@ jobs:
           EOF
           
           # Create minimal database.py for testing
-          cat > backend/database.py << 'EOF'
+          cat > backend/database.py << EOF
           from models import Base, engine
           
           def init_db():
@@ -112,7 +112,7 @@ jobs:
           EOF
           
           # Create minimal main.py for testing
-          cat > backend/main.py << 'EOF'
+          cat > backend/main.py << EOF
           from fastapi import FastAPI, Depends
           from services.jenkins_service import JenkinsService
           
@@ -125,7 +125,7 @@ jobs:
           EOF
           
           # Create minimal init_data.py for testing
-          cat > backend/init_data.py << 'EOF'
+          cat > backend/init_data.py << EOF
           from models import Pipeline, get_db
           from datetime import datetime
           import uuid
@@ -163,7 +163,7 @@ jobs:
           EOF
           
           # Create minimal schema.py for testing
-          cat > backend/schemas.py << 'EOF'
+          cat > backend/schemas.py << EOF
           from pydantic import BaseModel
           from datetime import datetime
           from typing import Optional, List
@@ -200,7 +200,7 @@ jobs:
       - name: Create test files
         run: |
           # Create test_api.py
-          cat > backend/tests/test_api.py << 'EOF'
+          cat > backend/tests/test_api.py << EOF
           import pytest
           from fastapi.testclient import TestClient
           import sys
@@ -221,7 +221,7 @@ jobs:
           EOF
           
           # Create conftest.py
-          cat > backend/tests/conftest.py << 'EOF'
+          cat > backend/tests/conftest.py << EOF
           import pytest
           from sqlalchemy import create_engine
           from sqlalchemy.orm import sessionmaker

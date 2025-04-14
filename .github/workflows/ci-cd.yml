@@ -34,7 +34,7 @@ jobs:
           echo "# This file marks the backend directory as a Python package" > backend/__init__.py
           echo "# This file marks the services directory as a Python package" > backend/services/__init__.py
           echo "# This file marks the tests directory as a Python package" > backend/tests/__init__.py
-          
+
           # Create minimal models.py for testing
           cat > backend/models.py << EOF
           from sqlalchemy import Column, String, DateTime, Text, ForeignKey, create_engine
@@ -42,9 +42,9 @@ jobs:
           from sqlalchemy.orm import relationship, sessionmaker
           from datetime import datetime
           import os
-          
+
           Base = declarative_base()
-          
+
           class Pipeline(Base):
               __tablename__ = "pipelines"
               id = Column(String, primary_key=True)
@@ -53,7 +53,7 @@ jobs:
               last_build_time = Column(DateTime, nullable=False)
               duration = Column(String, nullable=True)
               commit_hash = Column(String, nullable=True)
-          
+
           class BuildLog(Base):
               __tablename__ = "build_logs"
               id = Column(String, primary_key=True)
@@ -61,12 +61,12 @@ jobs:
               log_content = Column(Text, nullable=False)
               timestamp = Column(DateTime, nullable=False, default=datetime.utcnow)
               status = Column(String, nullable=False)
-          
+
           # Database setup
           DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///:memory:")
           engine = create_engine(DATABASE_URL)
           SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-          
+
           def get_db():
               db = SessionLocal()
               try:
@@ -74,13 +74,13 @@ jobs:
               finally:
                   db.close()
           EOF
-          
+
           # Create minimal jenkins_service.py for testing
           cat > backend/services/jenkins_service.py << EOF
           import os
           from datetime import datetime
           from typing import Optional, Dict, Any
-          
+
           class JenkinsService:
               def __init__(self):
                   pass
@@ -102,34 +102,34 @@ jobs:
               def trigger_rollback(self, job_name: str) -> bool:
                   return True
           EOF
-          
+
           # Create minimal database.py for testing
           cat > backend/database.py << EOF
           from models import Base, engine
-          
+
           def init_db():
               Base.metadata.create_all(bind=engine)
           EOF
-          
+
           # Create minimal main.py for testing
           cat > backend/main.py << EOF
           from fastapi import FastAPI, Depends
           from services.jenkins_service import JenkinsService
-          
+
           app = FastAPI()
           jenkins_service = JenkinsService()
-          
+
           @app.get("/")
           async def root():
               return {"message": "Welcome to CI/CD Dashboard API"}
           EOF
-          
+
           # Create minimal init_data.py for testing
           cat > backend/init_data.py << EOF
           from models import Pipeline, get_db
           from datetime import datetime
           import uuid
-          
+
           def init_sample_data():
               db = next(get_db())
               
@@ -161,26 +161,26 @@ jobs:
               
               db.commit()
           EOF
-          
+
           # Create minimal schema.py for testing
           cat > backend/schemas.py << EOF
           from pydantic import BaseModel
           from datetime import datetime
           from typing import Optional, List
-          
+
           class PipelineBase(BaseModel):
               name: str
               status: str
               last_build_time: datetime
               duration: Optional[str] = None
               commit_hash: Optional[str] = None
-          
+
           class Pipeline(PipelineBase):
               id: str
               
               class Config:
                   from_attributes = True
-          
+
           class BuildLog(BaseModel):
               id: str
               pipeline_id: str
@@ -190,7 +190,7 @@ jobs:
               
               class Config:
                   from_attributes = True
-          
+
           class RollbackResponse(BaseModel):
               message: str
               pipeline_name: str
@@ -206,20 +206,20 @@ jobs:
           import sys
           import os
           from unittest.mock import patch, MagicMock
-          
+
           # Add the parent directory to path
           sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-          
+
           from main import app
-          
+
           client = TestClient(app)
-          
+
           def test_root():
               response = client.get("/")
               assert response.status_code == 200
               assert response.json() == {"message": "Welcome to CI/CD Dashboard API"}
           EOF
-          
+
           # Create conftest.py
           cat > backend/tests/conftest.py << EOF
           import pytest
@@ -227,23 +227,23 @@ jobs:
           from sqlalchemy.orm import sessionmaker
           import os
           import sys
-          
+
           # Add parent directory to path
           sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-          
+
           from models import Base
-          
+
           # Use in-memory SQLite database for testing
           @pytest.fixture(scope="session")
           def engine():
               return create_engine("sqlite:///:memory:")
-          
+
           @pytest.fixture(scope="session")
           def tables(engine):
               Base.metadata.create_all(engine)
               yield
               Base.metadata.drop_all(engine)
-          
+
           @pytest.fixture
           def db_session(engine, tables):
               """Returns an sqlalchemy session, and after the test tears down everything properly."""
@@ -253,9 +253,9 @@ jobs:
               # use the connection with the already started transaction
               session_factory = sessionmaker(bind=connection)
               session = session_factory()
-          
+
               yield session
-          
+
               session.close()
               # rollback - everything that happened with the session above
               transaction.rollback()
@@ -265,10 +265,10 @@ jobs:
 
       - name: Run tests
         env:
-          DATABASE_URL: sqlite:///:memory:
-          JENKINS_URL: http://mock-jenkins-server
-          JENKINS_USERNAME: admin
-          JENKINS_PASSWORD: admin
+          DATABASE_URL: "sqlite:///:memory:"
+          JENKINS_URL: "http://mock-jenkins-server"
+          JENKINS_USERNAME: "admin"
+          JENKINS_PASSWORD: "admin"
         run: |
           cd backend
           # Initialize database

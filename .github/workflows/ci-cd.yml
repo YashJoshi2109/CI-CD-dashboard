@@ -36,17 +36,27 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r backend/requirements.txt
-          pip install pytest pytest-cov fastapi[testing]
+          pip install pytest pytest-cov==4.1.0 fastapi[testing]
 
-      - name: Create tests directory if it doesn't exist
-        run: mkdir -p backend/tests
+      - name: Create services directory if it doesn't exist
+        run: mkdir -p backend/services
+
+      - name: Setup project structure
+        run: |
+          touch backend/__init__.py
+          touch backend/services/__init__.py
+          touch backend/tests/__init__.py
 
       - name: Run tests
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/cicd_dashboard
+          JENKINS_URL: http://mock-jenkins-server
+          JENKINS_USERNAME: admin
+          JENKINS_PASSWORD: admin
         run: |
           cd backend
-          pytest tests/ --cov=. --cov-report=xml
+          python -c "from database import init_db; init_db()"
+          pytest tests/ -v --cov=. --cov-report=xml
 
       - name: Upload coverage
         uses: codecov/codecov-action@v2

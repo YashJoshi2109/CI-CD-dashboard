@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, DateTime, Text, ForeignKey, create_engine
+from sqlalchemy import Column, String, DateTime, Text, ForeignKey, create_engine, Integer
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship, sessionmaker
 from datetime import datetime
@@ -19,7 +19,11 @@ class Pipeline(Base):
     last_build_time = Column(DateTime, nullable=False)
     duration = Column(String, nullable=True)
     commit_hash = Column(String, nullable=True)
-    build_logs = relationship("BuildLog", back_populates="pipeline")
+    build_logs = relationship(
+        "BuildLog", back_populates="pipeline", cascade="all, delete-orphan")
+    url = Column(String, nullable=True)
+    last_build_number = Column(Integer, nullable=True)
+    description = Column(String, nullable=True)
 
 
 class BuildLog(Base):
@@ -27,10 +31,14 @@ class BuildLog(Base):
 
     id = Column(String, primary_key=True)
     pipeline_id = Column(String, ForeignKey("pipelines.id"))
+    build_number = Column(Integer, nullable=False, default=0)
     log_content = Column(Text, nullable=False)
     timestamp = Column(DateTime, nullable=False, default=datetime.utcnow)
     status = Column(String, nullable=False)
     pipeline = relationship("Pipeline", back_populates="build_logs")
+    duration = Column(String, nullable=True)
+    commit_hash = Column(String, nullable=True)
+    commit_message = Column(String, nullable=True)
 
 
 # Database setup

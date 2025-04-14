@@ -16,7 +16,11 @@ export const getPipelineStatus = async (): Promise<ApiResponse<PipelineStatus[]>
         return response.data;
     } catch (error) {
         console.error('Error fetching pipeline status:', error);
-        throw error;
+        return {
+            data: [],
+            message: error instanceof Error ? error.message : 'Unknown error occurred',
+            error: 'Failed to fetch pipeline status'
+        };
     }
 };
 
@@ -36,6 +40,26 @@ export const triggerRollback = async (pipelineId: string): Promise<ApiResponse<n
         return response.data;
     } catch (error) {
         console.error('Error triggering rollback:', error);
+        throw error;
+    }
+};
+
+export const triggerBuild = async (pipelineId: string): Promise<ApiResponse<null>> => {
+    try {
+        const response = await api.post(`/trigger-build/${pipelineId}`);
+        return response.data;
+    } catch (error) {
+        console.error('Error triggering build:', error);
+        throw error;
+    }
+};
+
+export const getBuildHistory = async (pipelineId: string): Promise<ApiResponse<any>> => {
+    try {
+        const response = await api.get(`/build-history/${pipelineId}`);
+        return response.data;
+    } catch (error) {
+        console.error('Error fetching build history:', error);
         throw error;
     }
 }; 

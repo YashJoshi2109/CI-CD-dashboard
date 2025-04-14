@@ -9,6 +9,9 @@ services:
       - "8000:8000"
     environment:
       - DATABASE_URL=postgresql://postgres:postgres@db:5432/cicd_dashboard
+      - JENKINS_URL=http://10.188.226.41:8081
+      - JENKINS_USERNAME=admin
+      - JENKINS_PASSWORD=admin
     depends_on:
       - db
 

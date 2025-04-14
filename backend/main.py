@@ -1,7 +1,7 @@
-from fastapi import FastAPI, HTTPException, Depends, status
+from fastapi import FastAPI, HTTPException, Depends, status, Query
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
-from typing import List
+from typing import List, Optional, Dict, Any
 import uuid
 from datetime import datetime
 
@@ -37,11 +37,42 @@ async def root():
     return {"message": "Welcome to CI/CD Dashboard API"}
 
 
+@app.get("/api/jenkins/status")
+async def jenkins_status():
+    """Check the status of the Jenkins connection"""
+    is_connected = jenkins_service.check_connection()
+    return {
+        "connected": is_connected,
+        "message": "Successfully connected to Jenkins" if is_connected else "Failed to connect to Jenkins"
+    }
+
+
+@app.get("/api/jenkins/jobs")
+async def get_jenkins_jobs():
+    """List all jobs/pipelines from Jenkins"""
+    jobs = jenkins_service.get_all_jobs()
+    return {"jobs": jobs, "count": len(jobs)}
+
+
 @app.get("/api/pipeline-status", response_model=List[PipelineSchema])
 async def get_pipeline_status(db: Session = Depends(get_db)):
     try:
         # Get all pipelines from database
         pipelines = db.query(Pipeline).all()
+
+        # If there are no pipelines yet, try to fetch them from Jenkins
+        if not pipelines:
+            jobs = jenkins_service.get_all_jobs()
+            for job in jobs:
+                pipeline = Pipeline(
+                    id=str(uuid.uuid4()),
+                    name=job["name"],
+                    status="UNKNOWN",
+                    last_build_time=datetime.utcnow()
+                )
+                db.add(pipeline)
+            db.commit()
+            pipelines = db.query(Pipeline).all()
 
         # Update pipeline status from Jenkins
         for pipeline in pipelines:
@@ -64,14 +95,23 @@ async def get_pipeline_status(db: Session = Depends(get_db)):
                         pipeline.name, build_number)
 
                     if build_log:
-                        log = BuildLog(
-                            id=str(uuid.uuid4()),
-                            pipeline_id=pipeline.id,
-                            log_content=build_log,
-                            timestamp=status_info["last_build_time"],
-                            status=status_info["status"]
-                        )
-                        db.add(log)
+                        # Check if this build log already exists
+                        existing_log = db.query(BuildLog).filter(
+                            BuildLog.pipeline_id == pipeline.id,
+                            BuildLog.build_number == build_number
+                        ).first()
+
+                        if not existing_log:
+                            log = BuildLog(
+                                id=str(uuid.uuid4()),
+                                pipeline_id=pipeline.id,
+                                build_number=build_number,
+                                # Limit log content size
+                                log_content=build_log[:10000],
+                                timestamp=status_info["last_build_time"],
+                                status=status_info["status"]
+                            )
+                            db.add(log)
 
             except Exception as e:
                 print(f"Error updating pipeline {pipeline.name}: {str(e)}")
@@ -98,8 +138,8 @@ async def get_build_logs(pipeline_id: str, db: Session = Depends(get_db)):
             )
 
         # Get logs from database
-        logs = db.query(BuildLog).filter(
-            BuildLog.pipeline_id == pipeline_id).all()
+        logs = db.query(BuildLog).filter(BuildLog.pipeline_id ==
+                                         pipeline_id).order_by(BuildLog.timestamp.desc()).all()
         return logs
     except HTTPException:
         raise
@@ -141,6 +181,72 @@ async def trigger_rollback(pipeline_id: str, db: Session = Depends(get_db)):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to trigger rollback: {str(e)}"
         )
+
+
+@app.post("/api/trigger-build/{pipeline_id}")
+async def trigger_build(pipeline_id: str, parameters: Optional[Dict[str, Any]] = None, db: Session = Depends(get_db)):
+    try:
+        # Verify pipeline exists
+        pipeline = db.query(Pipeline).filter(
+            Pipeline.id == pipeline_id).first()
+        if not pipeline:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Pipeline not found"
+            )
+
+        # Trigger build in Jenkins
+        success = jenkins_service.trigger_build(pipeline.name, parameters)
+        if not success:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to trigger build"
+            )
+
+        return {
+            "message": "Build triggered successfully",
+            "pipeline_name": pipeline.name,
+            "parameters": parameters,
+            "timestamp": datetime.utcnow()
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to trigger build: {str(e)}"
+        )
+
+
+@app.get("/api/build-history/{pipeline_id}")
+async def get_build_history(pipeline_id: str, limit: int = Query(10, ge=1, le=50), db: Session = Depends(get_db)):
+    try:
+        # Verify pipeline exists
+        pipeline = db.query(Pipeline).filter(
+            Pipeline.id == pipeline_id).first()
+        if not pipeline:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Pipeline not found"
+            )
+
+        # Get build history from Jenkins
+        history = jenkins_service.get_build_history(pipeline.name, limit)
+
+        return {
+            "pipeline_id": pipeline_id,
+            "pipeline_name": pipeline.name,
+            "builds": history,
+            "count": len(history)
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to fetch build history: {str(e)}"
+        )
+
 
 if __name__ == "__main__":
     import uvicorn

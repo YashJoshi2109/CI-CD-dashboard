@@ -38,6 +38,7 @@ async def root():
 
 
 @app.get("/api/jenkins/status")
+@app.get("/jenkins/status")
 async def jenkins_status():
     """Check the status of the Jenkins connection"""
     is_connected = jenkins_service.check_connection()
@@ -48,6 +49,7 @@ async def jenkins_status():
 
 
 @app.get("/api/jenkins/jobs")
+@app.get("/jenkins/jobs")
 async def get_jenkins_jobs():
     """List all jobs/pipelines from Jenkins"""
     jobs = jenkins_service.get_all_jobs()
@@ -55,6 +57,9 @@ async def get_jenkins_jobs():
 
 
 @app.get("/api/pipeline-status", response_model=List[PipelineSchema])
+@app.get("/api/pipeline-statuses", response_model=List[PipelineSchema])
+@app.get("/pipeline-status", response_model=List[PipelineSchema])
+@app.get("/pipeline-statuses", response_model=List[PipelineSchema])
 async def get_pipeline_status(db: Session = Depends(get_db)):
     try:
         # Get all pipelines from database
@@ -86,6 +91,8 @@ async def get_pipeline_status(db: Session = Depends(get_db)):
                 pipeline.last_build_time = status_info["last_build_time"]
                 pipeline.duration = status_info["duration"]
                 pipeline.commit_hash = status_info["commit_hash"]
+                pipeline.url = status_info.get("url")
+                pipeline.last_build_number = status_info.get("number")
 
                 # Get and save build log if available
                 job_info = jenkins_service.get_job_info(pipeline.name)
@@ -115,9 +122,11 @@ async def get_pipeline_status(db: Session = Depends(get_db)):
 
             except Exception as e:
                 print(f"Error updating pipeline {pipeline.name}: {str(e)}")
+                continue
 
         db.commit()
         return pipelines
+
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

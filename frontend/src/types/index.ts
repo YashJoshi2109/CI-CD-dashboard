@@ -1,18 +1,23 @@
 export interface PipelineStatus {
     id: string;
     name: string;
-    status: 'success' | 'failure' | 'in_progress';
+    status: string;
     last_build_time: string;
-    duration?: number; // in seconds
+    duration?: string;
     commit_hash?: string;
+    url?: string;
+    building?: boolean;
+    number?: number;
+    error?: string;
 }
 
 export interface BuildLog {
     id: string;
     pipeline_id: string;
+    build_number: number;
     log_content: string;
     timestamp: string;
-    status: 'success' | 'failure' | 'in_progress';
+    status: string;
 }
 
 export interface ApiResponse<T> {
@@ -22,14 +27,13 @@ export interface ApiResponse<T> {
 }
 
 export interface BuildHistoryItem {
-    id: string;
-    pipeline_id: string;
-    build_number: number;
-    commit_hash: string;
-    status: 'success' | 'failure' | 'in_progress';
+    number: number;
+    result: string;
     timestamp: string;
-    duration: number; // in seconds
-    triggered_by: string;
+    duration: number;
+    url: string;
+    commit_hash?: string;
+    commit_message?: string;
 }
 
 export interface BuildHistoryResponse {

@@ -6,6 +6,7 @@ import { format } from 'date-fns';
 import { Box, Typography, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Chip, CircularProgress } from '@mui/material';
 import { CheckCircle, Cancel, HourglassEmpty } from '@mui/icons-material';
 import Header from '../components/Header';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 
 const BuildHistoryPage: React.FC = () => {
   const { pipelineId } = useParams<{ pipelineId: string }>();
